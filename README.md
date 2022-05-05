@@ -1,2 +1,2 @@
 # reddit_dib_scraper
-A project to scrape and analyze r/dataisbeautiful
+A project to scrape r/dataisbeautiful
