@@ -38,24 +38,40 @@ for i in new_page:
 
 # Transform: --------------------
 
-# TODO: (1) Add the new page posts!
+# A helper function to make things cleaner:
+def extract_reddit_data(listings, var_to_extract):
+	final_list = []
+	for this_listing in listings:
+		final_list.extend([getattr(this_post, var_to_extract) for
+			this_post in this_listing._listing])
+
+	return final_list
+
+
 post_df = pd.DataFrame(dict(
-	post_id=[post.id for post in hot_page._listing],  # TODO: (2) Or name? Check which one retreives the post!
-	user_id=[post.author_fullname for post in hot_page._listing],
-	time_posted=[post.created_utc for post in hot_page._listing],
-	permalink=[post.permalink for post in hot_page._listing],
-	content_url=[post.url for post in hot_page._listing],
-	post_title=[post.title for post in hot_page._listing]))
-scan_df = pd.DataFrame(dict(post_id=[post.id for post in hot_page._listing],
-	scan_timestamp=[int(time.time())] * len(hot_page._listing), 
-	upvotes=[post.ups for post in hot_page._listing],
-	upvote_ratio=[post.upvote_ratio for post in hot_page._listing],
-	n_comments=[post.num_comments for post in hot_page._listing],
-	hot_position=[i for i, _ in enumerate(hot_page._listing)]))
+	post_id=extract_reddit_data([hot_page, new_page], 'id'),  # TODO: (2) Or name? Check which one retreives the post!
+	user_id=extract_reddit_data([hot_page, new_page], 'author_fullname'),
+	time_posted=extract_reddit_data([hot_page, new_page], 'created_utc'),
+	permalink=extract_reddit_data([hot_page, new_page], 'permalink'),
+	content_url=extract_reddit_data([hot_page, new_page], 'url'),
+	post_title=extract_reddit_data([hot_page, new_page], 'title')))
+scan_df = pd.DataFrame(dict(
+	post_id=extract_reddit_data([hot_page, new_page], 'id'),
+	scan_timestamp=[int(time.time())] *
+		(len(hot_page._listing) + len(new_page._listing)),
+	upvotes=extract_reddit_data([hot_page, new_page], 'ups'),
+	upvote_ratio=extract_reddit_data([hot_page, new_page], 'upvote_ratio'),
+	n_comments=extract_reddit_data([hot_page, new_page], 'num_comments'),
+	hot_position=[i for i, _ in enumerate(hot_page._listing)] +
+		[0 for _ in new_page._listing]))
 
 # Drop the first post, as it is always the pinned one.
 post_df = post_df.iloc[1:, :]
 scan_df = scan_df.iloc[1:, :]
+
+# Remove duplicates which occur on new and hot:
+post_df.drop_duplicates(inplace=True)
+scan_df.drop_duplicates(inplace=True, keep='first') # First entry is from hot page
 
 
 # Load: --------------------
@@ -63,7 +79,21 @@ scan_df = scan_df.iloc[1:, :]
 db_connection = psycopg2.connect(os.environ['DATABASE_URL'])
 db_cursor = db_connection.cursor()
 
-# TODO: (3) Implement the loading of the data.
+# TODO: (1) Only add new posts to the posts table!
+
+for this_data in post_df.itertuples(index=False, name=None):
+	db_cursor.execute('''INSERT INTO posts (
+		post_id, user_id, time_posted, permalink, content_url, post_title)
+		VALUES(%s, %s, TO_TIMESTAMP(%s)::TIMESTAMP, %s, %s, %s)''',
+	 	this_data)
+
+for this_data in scan_df.itertuples(index=False, name=None):
+	db_cursor.execute('''INSERT INTO post_scans (
+		post_id, scan_timestamp, upvotes, upvote_ratio,
+		n_comments, hot_position)
+		VALUES(%s, TO_TIMESTAMP(%s)::TIMESTAMP, %s, %s, %s, %s)''',
+	 	this_data)
 
 db_connection.commit()
+db_cursor.close()
 db_connection.close()
