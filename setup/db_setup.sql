@@ -13,7 +13,7 @@ CREATE TABLE posts (
 CREATE TABLE post_scans (
 	record_id SERIAL PRIMARY KEY,
 	post_id VARCHAR(50) REFERENCES posts (post_id),
-	scan_timestamp TIMESTAMP [0] NOT NULL,
+	scan_timestamp TIMESTAMP(0) NOT NULL,
 	upvotes INT,
 	upvote_ratio REAL,
 	n_comments INT,
