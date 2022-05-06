@@ -23,7 +23,7 @@ reddit = praw.Reddit(
 	client_id=os.environ['praw_client_id'],
 	client_secret=os.environ['praw_client_secret'],
 	refresh_token=os.environ['praw_refresh_token'],
-	user_agent='script by u/ktrutmann')
+	user_agent='Get posts from r/dataisbeautiful (by u/ktrutmann)')
 
 # Get top 100 posts of hot and new page:
 hot_page = reddit.subreddit('dataisbeautiful').hot(limit=100)
@@ -47,10 +47,9 @@ def extract_reddit_data(listings, var_to_extract):
 
 	return final_list
 
-
 post_df = pd.DataFrame(dict(
-	post_id=extract_reddit_data([hot_page, new_page], 'id'),  # TODO: (2) Or name? Check which one retreives the post!
-	user_id=extract_reddit_data([hot_page, new_page], 'author_fullname'),
+	post_id=extract_reddit_data([hot_page, new_page], 'id'),
+	user_name=extract_reddit_data([hot_page, new_page], 'author'),
 	time_posted=extract_reddit_data([hot_page, new_page], 'created_utc'),
 	permalink=extract_reddit_data([hot_page, new_page], 'permalink'),
 	content_url=extract_reddit_data([hot_page, new_page], 'url'),
@@ -79,12 +78,11 @@ scan_df.drop_duplicates(inplace=True, keep='first') # First entry is from hot pa
 db_connection = psycopg2.connect(os.environ['DATABASE_URL'])
 db_cursor = db_connection.cursor()
 
-# TODO: (1) Only add new posts to the posts table!
-
 for this_data in post_df.itertuples(index=False, name=None):
 	db_cursor.execute('''INSERT INTO posts (
 		post_id, user_id, time_posted, permalink, content_url, post_title)
-		VALUES(%s, %s, TO_TIMESTAMP(%s)::TIMESTAMP, %s, %s, %s)''',
+		VALUES(%s, %s, TO_TIMESTAMP(%s)::TIMESTAMP, %s, %s, %s)
+		ON CONFLICT DO NOTHING''',
 	 	this_data)
 
 for this_data in scan_df.itertuples(index=False, name=None):
