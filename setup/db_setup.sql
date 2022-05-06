@@ -1,6 +1,6 @@
 CREATE TABLE posts (
 	post_id VARCHAR(10) PRIMARY KEY,
-	user_id VARCHAR(20) NOT NULL,
+	user_name VARCHAR(50) NOT NULL,
 	time_posted TIMESTAMP(0) NOT NULL,
 	permalink VARCHAR NOT NULL,
 	content_url VARCHAR,
