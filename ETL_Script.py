@@ -68,6 +68,9 @@ scan_df = pd.DataFrame(dict(
 post_df = post_df.iloc[1:, :]
 scan_df = scan_df.iloc[1:, :]
 
+# The username is currently a Redditor instance. We need a string:
+post_df.user_name = post_df.user_name.map(str)
+
 # Remove duplicates which occur on new and hot:
 post_df.drop_duplicates(inplace=True)
 scan_df.drop_duplicates(inplace=True, keep='first') # First entry is from hot page
@@ -80,7 +83,7 @@ db_cursor = db_connection.cursor()
 
 for this_data in post_df.itertuples(index=False, name=None):
 	db_cursor.execute('''INSERT INTO posts (
-		post_id, user_id, time_posted, permalink, content_url, post_title)
+		post_id, user_name, time_posted, permalink, content_url, post_title)
 		VALUES(%s, %s, TO_TIMESTAMP(%s)::TIMESTAMP, %s, %s, %s)
 		ON CONFLICT DO NOTHING''',
 	 	this_data)
